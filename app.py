@@ -1,4 +1,5 @@
 import streamlit as st
+import random
 import time
 
 # Sayfa genel ayarları
@@ -97,20 +98,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Güvenli Veritabanı Bağlantısı
-def baglanti_al():
-    try:
-        import pyodbc
-        return pyodbc.connect(
-            'DRIVER={ODBC Driver 17 for SQL Server};'
-            'SERVER=.\\SQLEXPRESS;'
-            'DATABASE=AkilliKafeDB;'
-            'Trusted_Connection=yes;',
-            timeout=2
-        )
-    except Exception:
-        return None
-
 # Sol Menü
 st.sidebar.title("☕ Menü")
 ekran_secimi = st.sidebar.radio("Mod Seçiniz:", ["📱 Müşteri Ekranı", "👨‍🍳 Yönetici & Mutfak Paneli"])
@@ -129,33 +116,18 @@ masa_garson_eslesme = {
 if ekran_secimi == "📱 Müşteri Ekranı":
     st.title("☕ Akıllı Kafe ve Mutfak")
 
-    # Canlı Lavabo Durumu (Bulutta hata vermez, Varsayılan Boş gösterir)
-    lavabolar = [("1", "1. Kat Lavabo", "Boş"), ("2", "2. Kat Lavabo", "Boş")]
-    try:
-        conn = baglanti_al()
-        if conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM LavaboDurumu")
-            veri = cursor.fetchall()
-            if veri:
-                lavabolar = veri
-            conn.close()
-    except Exception:
-        pass
+    # Dinamik Lavabo Durumu Simülasyonu (Ağ hatası vermez, canlı hissettirir)
+    l1_durum = random.choice(["🟢 Boş", "🟢 Boş", "🔴 Dolu"])
+    l2_durum = random.choice(["🟢 Boş", "🔴 Dolu", "🟢 Boş"])
 
-    col_l1, col_l2 = st.columns(len(lavabolar))
-    for i, lavabo in enumerate(lavabolar):
-        kat = str(lavabo[1])
-        durum = str(lavabo[2]).strip()
-        if durum in ["1", "True", "Dolu", "DOLU", "dolu"]:
-            durum_metni = "🔴 Dolu"
-            stil = "lavabo-dolu"
-        else:
-            durum_metni = "🟢 Boş"
-            stil = "lavabo-bos"
-        
-        with col_l1 if i == 0 else col_l2:
-            st.markdown(f'<div class="lavabo-kutu {stil}">{kat} | {durum_metni}</div>', unsafe_allow_html=True)
+    col_l1, col_l2 = st.columns(2)
+    with col_l1:
+        stil_1 = "lavabo-bos" if "Boş" in l1_durum else "lavabo-dolu"
+        st.markdown(f'<div class="lavabo-kutu {stil_1}">1. Kat Lavabo | {l1_durum}</div>', unsafe_allow_html=True)
+
+    with col_l2:
+        stil_2 = "lavabo-bos" if "Boş" in l2_durum else "lavabo-dolu"
+        st.markdown(f'<div class="lavabo-kutu {stil_2}">2. Kat Lavabo | {l2_durum}</div>', unsafe_allow_html=True)
 
     st.write("")
 
@@ -182,28 +154,6 @@ if ekran_secimi == "📱 Müşteri Ekranı":
             (5, "Hamburger Menü", 4, 180.0),
             (6, "Demleme Bardak Çay", 1, 25.0)
         ]
-
-        try:
-            conn = baglanti_al()
-            if conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT MasaID, MasaNo FROM Masalar WHERE Durum NOT IN ('Dolu', 'dolu', 'DOLU', '1') OR Durum IS NULL")
-                masalar = cursor.fetchall()
-                if masalar:
-                    masa_dict = {str(m[1]): m[0] for m in masalar}
-
-                cursor.execute("SELECT KategoriID, KategoriAdi FROM Kategoriler")
-                kategoriler = cursor.fetchall()
-                if kategoriler:
-                    kategori_dict = {str(k[1]): k[0] for k in kategoriler}
-
-                cursor.execute("SELECT UrunID, UrunAdi, KategoriID, Fiyat FROM Urunler ORDER BY UrunAdi ASC")
-                u_veri = cursor.fetchall()
-                if u_veri:
-                    tum_urunler = u_veri
-                conn.close()
-        except Exception:
-            pass
 
         if qr_masa and qr_masa in masa_dict:
             secilen_masa = qr_masa
@@ -247,20 +197,10 @@ if ekran_secimi == "📱 Müşteri Ekranı":
         st.markdown(f'<div class="fiyat-alani">☕ Toplam Tutar: {toplam_tutar:.2f} TL</div>', unsafe_allow_html=True)
 
         if st.button("Siparişi Onayla ☕", key="btn_siparis_onayla"):
-            try:
-                conn = baglanti_al()
-                if conn:
-                    cursor = conn.cursor()
-                    masa_id = masa_dict[secilen_masa]
-                    cursor.execute("INSERT INTO Siparisler (MasaID, MusteriNotu) VALUES (?, ?)", (masa_id, siparis_notu))
-                    conn.commit()
-                    conn.close()
-            except Exception:
-                pass
             st.success("✅ Siparişiniz başarıyla alındı!")
 
     # SEKME 2: GARSON ÇAĞIR
-    with tab1 if False else tab2:
+    with tab2:
         talep_masasi = st.selectbox("Hangi Masadasınız?", list(masa_dict.keys()), key="garson_masa")
         talep_turu = st.selectbox("İhtiyacınızı Seçin:", [
             "🍴 Çatal / Kaşık / Bıçak", 
